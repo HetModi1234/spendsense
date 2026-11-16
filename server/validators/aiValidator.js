@@ -21,14 +21,14 @@ const geminiParsedExpenseSchema = z.object({
 
 const chatInputSchema = z.object({
   body: z.object({
-    conversationId: z.string().optional(),
+    conversationId: z.string().nullable().optional(),
     message: z.string().min(1, 'Message cannot be empty').max(1000)
   })
 });
 
 const forecastInputSchema = z.object({
   body: z.object({
-    month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Month must be in YYYY-MM format').optional()
+    month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Month must be in YYYY-MM format').nullable().optional()
   }).optional()
 });
 

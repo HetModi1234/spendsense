@@ -3,7 +3,11 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 let genAI = null;
 
 const getGeminiClient = () => {
-  const apiKey = process.env.GEMINI_API_KEY;
+  let apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return null;
+  }
+  apiKey = apiKey.replace(/^"|"$/g, '').trim();
   if (!apiKey) {
     return null;
   }
@@ -21,7 +25,7 @@ const getGenerativeModel = (options = {}) => {
     return null;
   }
 
-  const modelName = options.model || process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+  const modelName = options.model || process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
 
   return client.getGenerativeModel({
     model: modelName,

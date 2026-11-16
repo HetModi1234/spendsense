@@ -370,6 +370,40 @@ const handleFallbackChat = async (userId, userMessage, userCurrency = 'INR') => 
 };
 
 /**
+ * Builds and sanitizes chat history for Google Gemini.
+ * Gemini strictly requires:
+ * 1. History MUST start with role 'user'.
+ * 2. Roles MUST alternate between 'user' and 'model'.
+ * 3. History MUST end with role 'model' before chat.sendMessage(userMessage).
+ */
+const buildGeminiChatHistory = (pastMessages, maxPast = 10) => {
+  const slice = pastMessages.slice(-maxPast);
+  const formatted = [];
+
+  for (const m of slice) {
+    if (!m.content || typeof m.content !== 'string' || !m.content.trim()) continue;
+    const role = m.role === 'model' ? 'model' : 'user';
+
+    if (formatted.length === 0) {
+      if (role === 'user') {
+        formatted.push({ role: 'user', parts: [{ text: m.content }] });
+      }
+    } else {
+      const prevRole = formatted[formatted.length - 1].role;
+      if (role !== prevRole) {
+        formatted.push({ role, parts: [{ text: m.content }] });
+      }
+    }
+  }
+
+  if (formatted.length > 0 && formatted[formatted.length - 1].role === 'user') {
+    formatted.pop();
+  }
+
+  return formatted;
+};
+
+/**
  * Processes a chat message with Google Gemini function/tool calling.
  */
 const processUserChatMessage = async (userId, userMessage, conversationId = null, userCurrency = 'INR') => {
@@ -416,16 +450,13 @@ const processUserChatMessage = async (userId, userMessage, conversationId = null
   try {
     const client = getGeminiClient();
     const model = client.getGenerativeModel({
-      model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
+      model: process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite',
       systemInstruction: SYSTEM_INSTRUCTION,
       tools: [{ functionDeclarations: geminiFunctionDeclarations }]
     });
 
-    // Build chat history from past messages (last 8)
-    const history = conversation.messages.slice(-8, -1).map(m => ({
-      role: m.role === 'model' ? 'model' : 'user',
-      parts: [{ text: m.content }]
-    }));
+    // Build sanitized chat history from past messages (excluding the current user message)
+    const history = buildGeminiChatHistory(conversation.messages.slice(0, -1), 10);
 
     const chat = model.startChat({ history });
 
